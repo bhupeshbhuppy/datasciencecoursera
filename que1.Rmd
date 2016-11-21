@@ -1,0 +1,151 @@
+---
+title: "Assignment 4"
+author: "Bhupesh"
+date: "13 September 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+The main aim of this exercis is to find a stationary series. Since we know the properties of a stationary series we try to make every series in form of a stationary series. To do this first we will check weather the series is a stationary series or not. The paper tals about the natural log of  all the variables. To know weather a series is stationary or not we try to plot the series and look at the ACF of the series.
+
+
+```{r }
+library(tseries)
+library(xtable)
+data("NelPlo")
+## Create a random walk process
+set.seed(99)
+e<-rnorm(100)
+yt<-0
+for(t in 2:100){
+  yt[t]= yt[t-1]+e[t]
+  
+}
+## To CHeck the original series
+log_NelPlo<-log(NelPlo)
+tbl<-data.frame()
+cnme<-colnames(NelPlo)
+a<-acf(yt)
+tbl[1,1]<-"Random Walk"
+tbl[1,2]<-100
+for(i in 1:length(a)){
+  tbl[1,i+2]<-a[i]
+}
+for(j in 1:length(cnme)){
+  b<-acf(log_NelPlo[,j], na.action = na.pass, plot = FALSE)
+  #prd<-range(time(log_NelPlo[,j]))
+  tbl[j+1,1]<-cnme[j+1]
+  #tbl[j,2]<-paste(prd[1],prd[2],sep="-")
+  tbl[j+1,2]<-length(which(!is.na(log_NelPlo[,j])))
+  for(i in 1:(length(b))){
+    tbl[j+1,i+2]<-b[i]
+  }
+}
+colnames(tbl)<-c("series","T","r1","r2","r3","r4","r5","r6")
+xtable(tbl, caption="Table 1: Sample autocorrelation of the series")
+
+```
+
+## Plotting the Series and ACF.
+
+```{r log_NelPlo, echo=FALSE}
+for(j in 1:14){
+  plot.ts(log_NelPlo[,j], ylab=cnme[j] , main=paste("Fig 1.1: Actual series of", cnme[j]))
+}
+```
+
+As seen it is clear from the graph of the series as well as ACF the time series is not stationary in nature. The sample autocorrelation presented in table 1 and typically starts from 0.96 at lag one and decay slowly with increasing lags (accept for unemployment). The high level of autocorrelation signify that the series has a trend or is non stationary. To further analyse the series we take the first difference of the series.
+
+
+# First difference:
+
+```{r }
+lag_NelPlo<-lag(log_NelPlo,-1)
+lag_yt<-lag(yt,-1)
+diff_NelPlo<-NelPlo-lag_NelPlo
+diff_yt<-yt-lag_yt
+tbl_firstdiff<-data.frame()
+tbl[1,1]<-"Time aggegrated Random Walk"
+tbl[1,2]<-100
+a<-acf(diff_yt)
+for(i in 1:length(a)){
+  tbl_firstdiff[1,i+2]<-a[i]
+}
+for(j in 1:length(cnme)){
+  b<-acf(diff_NelPlo[,j], na.action = na.pass, plot = FALSE)
+  tbl_firstdiff[j+1,1]<-cnme[j]
+  tbl_firstdiff[j+1,2]<-length(which(!is.na(diff_NelPlo[,j])))
+  for(i in 1:(length(b))){
+    tbl_firstdiff[j+1,i+2]<-b[i]
+  }
+}
+colnames(tbl_firstdiff)<-c("series","T","r1","r2","r3","r4","r5","r6")
+xtable(tbl_firstdiff, caption="Table 2: Sample autocorrelation of the first difference of series")
+```
+
+
+## Plotting the Series and ACF.
+
+
+```{r diff_NelPlo, echo=FALSE}
+for(j in 1:14){
+  plot(diff_NelPlo[,j], ylab=cnme[j], main=paste("Fig 2.1: First Difference of",cnme[j]))
+}
+
+```
+
+The sample autocorrelation is (presented in table 2) positive and significant for lag one however not significiant for longer lags. This can be because the DGP for the time series is a Difference Stationary (DS) process. To verify this we need to perform a unit root test. Before that we can check if the series is just Trend Stationary (TS) or not. To do this we regress the series on time and plot the residuals.
+
+# Deviation from time trend
+
+```{r}
+residual_NelPlo<-data.frame()
+for(j in 1:length(cnme)){
+  t<-1:length(log_NelPlo[,j])
+  model<- lm(log_NelPlo[,j] ~ t)
+  r<-resid(model)
+  for(i in 1:(length(r))){
+    residual_NelPlo[i,j]<-r[i]
+  }
+}
+tbl_timetrend<-data.frame()
+res_yt<-resid(yt ~ c(1:100))
+a<-acf(res_yt)
+for(i in 1:length(a)){
+  tbl_timetrend[1,i+2]<-a[i]
+}
+tbl[1,1]<-"Detrended Random Walk"
+tbl[1,2]<-100
+for(j in 1:length(cnme)){
+  b<-acf(residual_NelPlo[,j], na.action = na.pass, plot = FALSE)
+  tbl_timetrend[j+1,1]<-cnme[j]
+  tbl_timetrend[j+1,2]<-length(which(!is.na(residual_NelPlo[,j])))
+  for(i in 1:(length(b))){
+    tbl_timetrend[j+1,i+2]<-b[i]
+  }
+} 
+colnames(tbl_timetrend)<-c("series","T","r1","r2","r3","r4","r5","r6")
+xtable(tbl_timetrend, caption="Table 3: Sample autocorrelation of the deviation from the time trend")
+```
+
+
+## Plotting the Series and ACF.
+
+
+```{r residual_NelPlo, echo=FALSE}
+for(j in 1:14){
+    plot(residual_NelPlo[,j], ylab=cnme[j], main=paste("Fig 3.1: Residual of", cnme[j]))
+}
+```
+
+
+The evidence against the series being TS is clear by looking at Table 3 and Fig. 3.2 which shows high ACF fo the detended series. It is similar to the original series(except unemp.) in many aspects. The ACF is similar to the detrended random walk process in first row. Therefore the series is a DS not a TS process. We need to further verify that the series has a unit root. 
+
+This can be done by the Dicky-Fuller Unit Root Tests.
+
+## Dicky-Fuller Unit Root Tests
